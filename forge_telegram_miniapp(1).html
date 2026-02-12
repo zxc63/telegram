@@ -1,0 +1,687 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Кузниця Кейсів</title>
+    <!-- Telegram WebApp API -->
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            color: #fff;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow-x: hidden;
+            padding: 10px;
+        }
+
+        .container {
+            text-align: center;
+            position: relative;
+            z-index: 10;
+            max-width: 600px;
+            width: 100%;
+        }
+
+        .user-info {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            backdrop-filter: blur(10px);
+        }
+
+        .balance {
+            font-size: 24px;
+            font-weight: bold;
+            color: #ffa500;
+        }
+
+        .case-selection {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin-top: 30px;
+        }
+
+        .case-box {
+            background: linear-gradient(145deg, #2d4059, #1f3044);
+            border: 3px solid #ff6b35;
+            border-radius: 15px;
+            padding: 25px 20px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            width: 160px;
+            position: relative;
+        }
+
+        .case-box:hover:not(.disabled) {
+            transform: translateY(-10px) scale(1.05);
+            box-shadow: 0 15px 40px rgba(255, 107, 53, 0.6);
+            border-color: #ffa500;
+        }
+
+        .case-box.disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            border-color: #666;
+        }
+
+        .case-icon {
+            font-size: 50px;
+            margin-bottom: 10px;
+        }
+
+        .case-name {
+            font-size: 18px;
+            font-weight: bold;
+            margin: 10px 0;
+        }
+
+        .case-price {
+            font-size: 22px;
+            font-weight: bold;
+            color: #ffa500;
+            margin-top: 8px;
+        }
+
+        .insufficient {
+            color: #ff4444;
+            font-size: 12px;
+            margin-top: 5px;
+        }
+
+        .forge-scene {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+        }
+
+        .forge-scene.active {
+            display: flex;
+        }
+
+        .anvil {
+            position: relative;
+            width: 300px;
+            height: 200px;
+            margin-bottom: 50px;
+        }
+
+        .anvil-base {
+            width: 300px;
+            height: 120px;
+            background: linear-gradient(145deg, #4a4a4a, #2a2a2a);
+            border-radius: 10px;
+            position: absolute;
+            bottom: 0;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.8);
+        }
+
+        .anvil-top {
+            width: 250px;
+            height: 50px;
+            background: linear-gradient(145deg, #666, #333);
+            border-radius: 20px 20px 5px 5px;
+            position: absolute;
+            top: 50px;
+            left: 25px;
+        }
+
+        .hammer {
+            position: absolute;
+            width: 120px;
+            height: 120px;
+            top: -150px;
+            left: 50%;
+            transform: translateX(-50%) rotate(-45deg);
+            transition: all 0.5s ease;
+        }
+
+        .hammer.strike {
+            animation: hammerStrike 0.6s ease-in-out;
+        }
+
+        .hammer-head {
+            width: 80px;
+            height: 40px;
+            background: linear-gradient(145deg, #888, #444);
+            border-radius: 5px;
+            position: absolute;
+            top: 0;
+            right: 0;
+        }
+
+        .hammer-handle {
+            width: 15px;
+            height: 100px;
+            background: linear-gradient(145deg, #8b4513, #654321);
+            border-radius: 7px;
+            position: absolute;
+            bottom: 0;
+            left: 10px;
+            transform: rotate(-45deg);
+            transform-origin: top;
+        }
+
+        @keyframes hammerStrike {
+            0% {
+                top: -150px;
+                transform: translateX(-50%) rotate(-45deg);
+            }
+            50% {
+                top: 20px;
+                transform: translateX(-50%) rotate(-10deg);
+            }
+            100% {
+                top: -150px;
+                transform: translateX(-50%) rotate(-45deg);
+            }
+        }
+
+        .sparks {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 10px;
+            height: 10px;
+        }
+
+        .spark {
+            position: absolute;
+            width: 6px;
+            height: 6px;
+            background: #ff6b35;
+            border-radius: 50%;
+            opacity: 0;
+            box-shadow: 0 0 10px #ff6b35;
+        }
+
+        .sparks.active .spark {
+            animation: sparkFly 0.8s ease-out forwards;
+        }
+
+        @keyframes sparkFly {
+            0% {
+                opacity: 1;
+                transform: translate(0, 0) scale(1);
+            }
+            100% {
+                opacity: 0;
+                transform: translate(var(--tx), var(--ty)) scale(0);
+            }
+        }
+
+        .reward-box {
+            display: none;
+            background: linear-gradient(145deg, #ffd700, #ffed4e);
+            border: 5px solid #ff6b35;
+            border-radius: 20px;
+            padding: 40px;
+            animation: rewardAppear 0.8s ease-out;
+            box-shadow: 0 0 50px rgba(255, 215, 0, 0.8);
+            max-width: 90%;
+        }
+
+        .reward-box.show {
+            display: block;
+        }
+
+        @keyframes rewardAppear {
+            0% {
+                opacity: 0;
+                transform: scale(0) rotate(180deg);
+            }
+            60% {
+                transform: scale(1.2) rotate(-10deg);
+            }
+            100% {
+                opacity: 1;
+                transform: scale(1) rotate(0);
+            }
+        }
+
+        .reward-icon {
+            font-size: 100px;
+            margin-bottom: 20px;
+            animation: float 2s ease-in-out infinite;
+        }
+
+        @keyframes float {
+            0%, 100% {
+                transform: translateY(0);
+            }
+            50% {
+                transform: translateY(-20px);
+            }
+        }
+
+        .reward-text {
+            font-size: 28px;
+            font-weight: bold;
+            color: #2d4059;
+            margin-top: 15px;
+        }
+
+        .close-btn {
+            margin-top: 30px;
+            padding: 15px 40px;
+            background: #ff6b35;
+            border: none;
+            border-radius: 10px;
+            color: white;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .close-btn:hover {
+            background: #ff8555;
+            transform: scale(1.05);
+        }
+
+        h1 {
+            font-size: 36px;
+            margin-bottom: 15px;
+            text-shadow: 0 0 20px rgba(255, 107, 53, 0.8);
+        }
+
+        .subtitle {
+            font-size: 16px;
+            opacity: 0.9;
+            margin-bottom: 10px;
+        }
+
+        .fire-effect {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 200px;
+            height: 100px;
+        }
+
+        .flame {
+            position: absolute;
+            bottom: 0;
+            width: 20px;
+            height: 60px;
+            background: linear-gradient(to top, #ff6b35, #ffa500, transparent);
+            border-radius: 50% 50% 0 0;
+            animation: flicker 1.5s infinite;
+            opacity: 0.8;
+        }
+
+        @keyframes flicker {
+            0%, 100% {
+                transform: scaleY(1) scaleX(1);
+                opacity: 0.8;
+            }
+            50% {
+                transform: scaleY(1.2) scaleX(0.9);
+                opacity: 1;
+            }
+        }
+
+        .loading {
+            display: none;
+            color: #ffa500;
+            margin-top: 20px;
+            font-size: 18px;
+        }
+
+        .loading.active {
+            display: block;
+        }
+
+        @media (max-width: 480px) {
+            h1 {
+                font-size: 28px;
+            }
+
+            .case-box {
+                width: 140px;
+                padding: 20px 15px;
+            }
+
+            .case-icon {
+                font-size: 40px;
+            }
+
+            .case-name {
+                font-size: 16px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔥 Кузниця Кейсів 🔥</h1>
+        <p class="subtitle">Обирай кейс та отримуй нагороди!</p>
+
+        <div class="user-info" id="userInfo">
+            <div class="balance">💰 Завантаження...</div>
+        </div>
+
+        <div class="case-selection" id="caseSelection">
+            <!-- Генерируется JS -->
+        </div>
+
+        <div class="loading" id="loading">⏳ Обробка...</div>
+    </div>
+
+    <div class="forge-scene" id="forgeScene">
+        <div class="anvil">
+            <div class="hammer" id="hammer">
+                <div class="hammer-head"></div>
+                <div class="hammer-handle"></div>
+            </div>
+            <div class="anvil-top"></div>
+            <div class="anvil-base"></div>
+            <div class="sparks" id="sparks"></div>
+            <div class="fire-effect">
+                <div class="flame" style="left: 20px; animation-delay: 0s;"></div>
+                <div class="flame" style="left: 50px; animation-delay: 0.3s;"></div>
+                <div class="flame" style="left: 80px; animation-delay: 0.6s;"></div>
+                <div class="flame" style="left: 110px; animation-delay: 0.2s;"></div>
+                <div class="flame" style="left: 140px; animation-delay: 0.5s;"></div>
+            </div>
+        </div>
+
+        <div class="reward-box" id="rewardBox">
+            <div class="reward-icon" id="rewardIcon">🎉</div>
+            <div class="reward-text" id="rewardText">Твоя нагорода!</div>
+            <button class="close-btn" onclick="closeForge()">Забрати нагороду</button>
+        </div>
+    </div>
+
+    <script>
+        // Инициализация Telegram WebApp
+        let tg = window.Telegram.WebApp;
+        tg.expand();
+        tg.MainButton.hide();
+        tg.BackButton.show();
+
+        // Применяем тему Telegram
+        document.body.style.background = tg.themeParams.bg_color || document.body.style.background;
+
+        // Конфигурация кейсов
+        const caseConfig = [
+            {
+                type: 'Бронзовий',
+                icon: '📦',
+                price: 50,
+                rewards: [
+                    { icon: '🪙', name: '100 монет' },
+                    { icon: '⚔️', name: 'Меч новачка' },
+                    { icon: '🛡️', name: "Дерев'яний щит" },
+                    { icon: '🗡️', name: 'Простий кинджал' }
+                ]
+            },
+            {
+                type: 'Срібний',
+                icon: '🎁',
+                price: 150,
+                rewards: [
+                    { icon: '💰', name: '500 монет' },
+                    { icon: '⚔️', name: 'Стальний меч' },
+                    { icon: '🏹', name: 'Лук мисливця' },
+                    { icon: '🧪', name: 'Зілля сили' },
+                    { icon: '💎', name: '3 кристали' }
+                ]
+            },
+            {
+                type: 'Золотий',
+                icon: '💎',
+                price: 300,
+                rewards: [
+                    { icon: '💎', name: '1000 кристалів' },
+                    { icon: '⚔️', name: 'Легендарний меч' },
+                    { icon: '👑', name: 'Королівська корона' },
+                    { icon: '🔮', name: 'Магічний артефакт' },
+                    { icon: '🦄', name: 'Рідкісний пітомець' },
+                    { icon: '🌟', name: 'Зірковий амулет' }
+                ]
+            }
+        ];
+
+        let userBalance = 0;
+
+        // Получаем данные пользователя
+        function getUserData() {
+            const initData = tg.initDataUnsafe;
+            return {
+                userId: initData?.user?.id || 0,
+                username: initData?.user?.username || 'unknown',
+                firstName: initData?.user?.first_name || 'User'
+            };
+        }
+
+        // Инициализация
+        function init() {
+            const userData = getUserData();
+
+            // В реальном боте баланс нужно получать через запрос к серверу
+            // Пока берем из параметров (если бот передаст)
+            const urlParams = new URLSearchParams(window.location.search);
+            userBalance = parseInt(urlParams.get('balance')) || 0;
+
+            updateUI();
+        }
+
+        // Обновление интерфейса
+        function updateUI() {
+            const userData = getUserData();
+            document.getElementById('userInfo').innerHTML = 
+                '<div class="balance">💰 Баланс: ' + userBalance + ' монет</div>' +
+                '<div style="font-size: 14px; opacity: 0.8; margin-top: 5px;">Привіт, ' + userData.firstName + '!</div>';
+
+            const caseSelection = document.getElementById('caseSelection');
+            caseSelection.innerHTML = '';
+
+            caseConfig.forEach(caseData => {
+                const canAfford = userBalance >= caseData.price;
+                const caseBox = document.createElement('div');
+                caseBox.className = 'case-box' + (canAfford ? '' : ' disabled');
+                caseBox.innerHTML = 
+                    '<div class="case-icon">' + caseData.icon + '</div>' +
+                    '<div class="case-name">' + caseData.type + '</div>' +
+                    '<div class="case-price">' + caseData.price + ' 💰</div>' +
+                    (canAfford ? '' : '<div class="insufficient">Недостатньо монет</div>');
+
+                if (canAfford) {
+                    caseBox.onclick = () => openCase(caseData);
+                }
+
+                caseSelection.appendChild(caseBox);
+            });
+        }
+
+        // Открытие кейса
+        function openCase(caseData) {
+            if (userBalance < caseData.price) {
+                tg.showAlert('Недостатньо монет! Треба: ' + caseData.price + ', Є: ' + userBalance);
+                return;
+            }
+
+            tg.showPopup({
+                title: '🔥 Відкрити кейс?',
+                message: caseData.type + ' кейс\nЦіна: ' + caseData.price + ' монет',
+                buttons: [
+                    {id: 'buy', type: 'default', text: 'Відкрити'},
+                    {id: 'cancel', type: 'cancel'}
+                ]
+            }, function(buttonId) {
+                if (buttonId === 'buy') {
+                    // Отправляем данные боту для проверки баланса
+                    sendToBotAndStartAnimation(caseData);
+                }
+            });
+        }
+
+        // Отправка данных боту
+        function sendToBotAndStartAnimation(caseData) {
+            const userData = getUserData();
+
+            // Выбираем случайную награду
+            const reward = caseData.rewards[Math.floor(Math.random() * caseData.rewards.length)];
+
+            // Сохраняем для отправки после анимации
+            window.currentPurchase = {
+                caseType: caseData.type,
+                price: caseData.price,
+                reward: reward,
+                userId: userData.userId,
+                username: userData.username
+            };
+
+            // Запускаем анимацию
+            startForgeAnimation(caseData, reward);
+        }
+
+        // Анимация кузницы
+        function startForgeAnimation(caseData, reward) {
+            const forgeScene = document.getElementById('forgeScene');
+            const hammer = document.getElementById('hammer');
+            const sparks = document.getElementById('sparks');
+
+            forgeScene.classList.add('active');
+            generateSparks();
+
+            let strikeCount = 0;
+            const strikeInterval = setInterval(() => {
+                hammer.classList.add('strike');
+
+                if (tg.HapticFeedback) {
+                    tg.HapticFeedback.impactOccurred('heavy');
+                }
+
+                setTimeout(() => {
+                    sparks.classList.add('active');
+                    setTimeout(() => {
+                        sparks.classList.remove('active');
+                        generateSparks();
+                    }, 800);
+                }, 300);
+
+                setTimeout(() => {
+                    hammer.classList.remove('strike');
+                }, 600);
+
+                strikeCount++;
+
+                if (strikeCount >= 3) {
+                    clearInterval(strikeInterval);
+                    setTimeout(() => {
+                        showReward(reward);
+                    }, 1000);
+                }
+            }, 1200);
+        }
+
+        // Генерация искр
+        function generateSparks() {
+            const sparksContainer = document.getElementById('sparks');
+            sparksContainer.innerHTML = '';
+
+            for (let i = 0; i < 12; i++) {
+                const spark = document.createElement('div');
+                spark.className = 'spark';
+
+                const angle = (Math.PI * 2 * i) / 12;
+                const distance = 50 + Math.random() * 50;
+                const tx = Math.cos(angle) * distance;
+                const ty = Math.sin(angle) * distance;
+
+                spark.style.setProperty('--tx', tx + 'px');
+                spark.style.setProperty('--ty', ty + 'px');
+                spark.style.animationDelay = (Math.random() * 0.2) + 's';
+
+                sparksContainer.appendChild(spark);
+            }
+        }
+
+        // Показать награду
+        function showReward(reward) {
+            const rewardBox = document.getElementById('rewardBox');
+            const rewardIcon = document.getElementById('rewardIcon');
+            const rewardText = document.getElementById('rewardText');
+
+            rewardIcon.textContent = reward.icon;
+            rewardText.textContent = reward.name;
+
+            rewardBox.classList.add('show');
+
+            if (tg.HapticFeedback) {
+                tg.HapticFeedback.notificationOccurred('success');
+            }
+        }
+
+        // Закрыть и отправить результат боту
+        function closeForge() {
+            if (window.currentPurchase) {
+                const data = JSON.stringify({
+                    action: 'reward_received',
+                    caseType: window.currentPurchase.caseType,
+                    reward: window.currentPurchase.reward,
+                    price: window.currentPurchase.price,
+                    userId: window.currentPurchase.userId,
+                    timestamp: new Date().toISOString()
+                });
+
+                // Отправляем данные боту
+                tg.sendData(data);
+            }
+
+            // Закрываем Mini App
+            tg.close();
+        }
+
+        // Обработка кнопки "Назад"
+        tg.BackButton.onClick(function() {
+            const forgeScene = document.getElementById('forgeScene');
+            if (forgeScene.classList.contains('active')) {
+                tg.showPopup({
+                    title: 'Скасувати?',
+                    message: 'Анімація ще не завершена',
+                    buttons: [
+                        {id: 'yes', type: 'destructive', text: 'Так'},
+                        {id: 'no', type: 'cancel'}
+                    ]
+                }, function(buttonId) {
+                    if (buttonId === 'yes') {
+                        tg.close();
+                    }
+                });
+            } else {
+                tg.close();
+            }
+        });
+
+        // Запуск при загрузке
+        tg.ready();
+        init();
+    </script>
+</body>
+</html>
